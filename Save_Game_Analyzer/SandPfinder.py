@@ -2,24 +2,9 @@ import re
 import csv
 import os
 
-try:
-
-    script_folder = os.path.dirname(os.path.abspath(__file__))
-    parent_folder = os.path.dirname(script_folder)
-    map_folder = os.path.join(parent_folder, 'map')
-    provinces_folder = os.path.join(parent_folder, 'history' , 'provinces')
-    input_file = os.path.join(map_folder, 'region.txt')
-    output_file = "listofstates.csv"
-
-    # Define the regular expression pattern for extracting the numbers and state name
-    pattern = r"= {\s*(.*?)\s*} #(.*)"
-
-    # Initialize the CSV writer
-    csv_file = open(output_file, mode="w", newline="")
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(["Number", "State"])
-
-
+def get_province_lists(mod_directory):
+    map_folder = os.path.join(mod_directory, 'map')
+    provinces_folder = os.path.join(mod_directory, 'history' , 'provinces')
     province_list = []
 
     for folder_name in os.listdir(provinces_folder):
@@ -38,33 +23,43 @@ try:
                         province_list.append(province_dict)
                     except ValueError:
                         print(f"Ignoring file with unexpected name format: {file_name}")
-
+    
     province_list_sorted = sorted(province_list, key=lambda x: x['prov_id'])
 
-    csv_file = 'listofprovinces.csv'
-    fieldnames = ['prov_id', 'prov_name']
+    return province_list_sorted
 
-    with open(csv_file, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(province_list_sorted)
+def get_state_list(mod_directory):
+    region_file = os.path.join(mod_directory, "map", "region.txt")
+    STATE_EXTRACT_REGEX = r"= {\s*(.*?)\s*} #(.*)"
+    state_list = []
 
-    print(f"Province list has been saved to {csv_file}")
-
-    # Open and parse the input file
-    with open(input_file, mode="r+", encoding='latin-1') as file:
-        print(file)
+    with open(region_file, mode="r+", encoding='latin-1') as file:
         for line in file:
-            match = re.search(pattern, line)
+            match = re.search(STATE_EXTRACT_REGEX, line)
             if match:
                 numbers = match.group(1).split()
                 state = match.group(2).strip()
                 for number in numbers:
-                    csv_writer.writerow([number, state])
+                    state_list.append([number, state])
+    
+    return state_list
 
+def generate_states_and_provinces(mod_directory):
+    try:
+        province_list_sorted = get_province_lists(mod_directory)
+        state_list = get_state_list(mod_directory)
 
-    print(f"States list has been saved to {output_file}")
+        with open('listofprovinces.csv', 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=['prov_id', 'prov_name'])
+            writer.writeheader()
+            writer.writerows(province_list_sorted)
 
-except Exception as e:
-    print("States and provinces list csvs was not able to be written")
-    print("An error occurred:", str(e))
+        with open("listofstates.csv", "w", newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=["Number", "State"])
+            writer.writeheader()
+            writer.writerows(state_list)
+
+        print(f"States list has been saved to {output_file}")
+    except Exception as e:
+        print("States and provinces list csvs was not able to be written")
+        print("An error occurred:", str(e))
